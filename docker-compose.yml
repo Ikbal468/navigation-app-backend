@@ -1,0 +1,32 @@
+# Routely infrastructure.
+#   docker compose up -d db                # PostGIS only (backend: DATABASE_URL below)
+#   docker compose --profile maps up -d    # + OSRM routing + TileServer GL (needs data, see infra/README.md)
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: routely
+      POSTGRES_PASSWORD: routely
+      POSTGRES_DB: routely
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/init-postgis.sql:/docker-entrypoint-initdb.d/init-postgis.sql:ro
+
+  osrm:
+    profiles: ["maps"]
+    image: osrm/osrm-backend
+    command: osrm-routed --algorithm mld /data/region.osrm
+    ports: ["5000:5000"]
+    volumes:
+      - ./infra/osrm:/data
+
+  tiles:
+    profiles: ["maps"]
+    image: maptiler/tileserver-gl
+    ports: ["8080:8080"]
+    volumes:
+      - ./infra/tiles:/data
+
+volumes:
+  pgdata:
